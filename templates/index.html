@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -79,32 +79,50 @@
   </div>
 
   <script>
+    console.log('🚀 Elias Video Splitter loaded!');
+    
     let uploadedFilename = '';
     let outputDir = '';
     let clipsData = [];
     
+    // File upload
     document.getElementById('video-input').addEventListener('change', (e) => {
       if (e.target.files[0]) uploadFile(e.target.files[0]);
     });
     
+    // Drag & drop
     const dropZone = document.getElementById('drop-zone');
     ['dragenter', 'dragover'].forEach(e => {
-      dropZone.addEventListener(e, (ev) => { ev.preventDefault(); dropZone.classList.add('dragover'); });
+      dropZone.addEventListener(e, (ev) => { 
+        ev.preventDefault(); 
+        dropZone.classList.add('dragover'); 
+      });
     });
     ['dragleave', 'drop'].forEach(e => {
-      dropZone.addEventListener(e, (ev) => { ev.preventDefault(); dropZone.classList.remove('dragover'); });
+      dropZone.addEventListener(e, (ev) => { 
+        ev.preventDefault(); 
+        dropZone.classList.remove('dragover'); 
+      });
     });
     dropZone.addEventListener('drop', (e) => {
       if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
     });
     
     async function uploadFile(file) {
+      console.log('📤 Uploading:', file.name, file.size);
+      
       const formData = new FormData();
       formData.append('video', file);
       
       try {
-        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const res = await fetch('/upload', { 
+          method: 'POST', 
+          body: formData 
+        });
+        
+        console.log('📥 Response status:', res.status);
         const data = await res.json();
+        console.log('📊 Response data:', data);
         
         if (data.success) {
           uploadedFilename = data.filename;
@@ -114,9 +132,12 @@
           const secs = Math.floor(data.duration%60).toString().padStart(2,'0');
           document.getElementById('file-duration').textContent = `${mins}:${secs}`;
           showSection('settings');
+        } else {
+          alert('خطأ: ' + (data.error || 'فشل رفع الملف'));
         }
       } catch (e) {
-        alert('خطأ في رفع الملف');
+        console.error('❌ Upload error:', e);
+        alert('خطأ في رفع الملف: ' + e.message);
       }
     }
     
@@ -127,6 +148,8 @@
       const duration = document.querySelector('input[name="duration"]:checked').value;
       const quality = document.querySelector('input[name="quality"]:checked').value;
       
+      console.log('✂️ Splitting:', uploadedFilename, duration, quality);
+      
       try {
         const res = await fetch('/split', {
           method: 'POST',
@@ -135,15 +158,22 @@
         });
         
         const data = await res.json();
+        console.log('📊 Split result:', data);
+        
         if (data.success) {
           clipsData = data.clips;
           outputDir = data.output_dir;
           document.getElementById('result-summary').textContent = `تم إنشاء ${clipsData.length} مقطع فيديو`;
           renderClips();
           showSection('results');
+        } else {
+          alert('خطأ في التقسيم: ' + (data.error || 'فشل'));
+          showSection('settings');
         }
       } catch (e) {
-        alert('خطأ في المعالجة');
+        console.error('❌ Split error:', e);
+        alert('خطأ في المعالجة: ' + e.message);
+        showSection('settings');
       }
     }
     
