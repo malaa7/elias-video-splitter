@@ -7,3 +7,5 @@ __pycache__/
 *.zip
 venv/
 .vscode/
+fly.toml
+.fly/
