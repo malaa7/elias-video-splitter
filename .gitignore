@@ -1,0 +1,9 @@
+uploads/
+outputs/
+__pycache__/
+*.pyc
+.env
+*.mp4
+*.zip
+venv/
+.vscode/

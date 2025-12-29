@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elias Video Splitter 4 WhatsApp</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Elias Video Splitter<span>4 WhatsApp</span></h1>
+    </div>
+
+    <!-- Upload -->
+    <div id="upload" class="section active">
+      <div id="drop-zone" class="upload-area">
+        <div class="upload-icon">📱</div>
+        <h2>اختر فيديو أو اسحب وأفلت هنا</h2>
+        <p>تقسيم احترافي لفيديوهات الواتساب ستوري</p>
+        <input type="file" id="video-input" accept="video/*" hidden>
+        <button class="btn" onclick="document.getElementById('video-input').click()">استعراض الملفات</button>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div id="settings" class="section">
+      <div class="file-info">
+        <div class="file-details">
+          <i>🎬</i>
+          <div>
+            <div id="file-name" class="file-name">-</div>
+            <div style="color: #666;">
+              المدة: <span id="file-duration">-</span> | الحجم: <span id="file-size">-</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn" onclick="resetFile()" style="width:auto; padding:12px 25px;">إزالة</button>
+      </div>
+      
+      <div class="settings-group">
+        <label>مدة كل مقطع</label>
+        <div class="segmented">
+          <input type="radio" name="duration" value="15" id="d15"><label for="d15">15ث</label>
+          <input type="radio" name="duration" value="30" id="d30" checked><label for="d30">30ث</label>
+          <input type="radio" name="duration" value="45" id="d45"><label for="d45">45ث</label>
+          <input type="radio" name="duration" value="60" id="d60"><label for="d60">60ث</label>
+        </div>
+      </div>
+      
+      <div class="settings-group">
+        <label>جودة الإخراج</label>
+        <div class="segmented">
+          <input type="radio" name="quality" value="high" id="qh" checked><label for="qh">عالية</label>
+          <input type="radio" name="quality" value="medium" id="qm"><label for="qm">متوسطة</label>
+          <input type="radio" name="quality" value="low" id="ql"><label for="ql">واتساب</label>
+        </div>
+      </div>
+      
+      <button class="btn" onclick="startProcessing()">🚀 قسّم الفيديو الآن</button>
+    </div>
+
+    <!-- Processing -->
+    <div id="processing" class="section">
+      <div class="loader"></div>
+      <div id="status-text" class="status-text">جاري التحضير...</div>
+      <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="section">
+      <div class="success-icon">✅</div>
+      <h2>تم بنجاح!</h2>
+      <p id="result-summary">تم إنشاء 0 مقاطع</p>
+      <button class="btn" onclick="downloadAllZip()">📦 تحميل الكل (ZIP)</button>
+      <button class="btn" onclick="location.reload()" style="background:#6c757d;margin-top:10px;">🔄 فيديو جديد</button>
+      <div class="clips-grid" id="clips-grid"></div>
+    </div>
+  </div>
+
+  <script>
+    let uploadedFilename = '';
+    let outputDir = '';
+    let clipsData = [];
+    
+    document.getElementById('video-input').addEventListener('change', (e) => {
+      if (e.target.files[0]) uploadFile(e.target.files[0]);
+    });
+    
+    const dropZone = document.getElementById('drop-zone');
+    ['dragenter', 'dragover'].forEach(e => {
+      dropZone.addEventListener(e, (ev) => { ev.preventDefault(); dropZone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(e => {
+      dropZone.addEventListener(e, (ev) => { ev.preventDefault(); dropZone.classList.remove('dragover'); });
+    });
+    dropZone.addEventListener('drop', (e) => {
+      if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
+    });
+    
+    async function uploadFile(file) {
+      const formData = new FormData();
+      formData.append('video', file);
+      
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+          uploadedFilename = data.filename;
+          document.getElementById('file-name').textContent = file.name;
+          document.getElementById('file-size').textContent = (data.size/1024/1024).toFixed(1) + ' ميجا';
+          const mins = Math.floor(data.duration/60);
+          const secs = Math.floor(data.duration%60).toString().padStart(2,'0');
+          document.getElementById('file-duration').textContent = `${mins}:${secs}`;
+          showSection('settings');
+        }
+      } catch (e) {
+        alert('خطأ في رفع الملف');
+      }
+    }
+    
+    async function startProcessing() {
+      if (!uploadedFilename) return alert('اختر فيديو أولاً');
+      
+      showSection('processing');
+      const duration = document.querySelector('input[name="duration"]:checked').value;
+      const quality = document.querySelector('input[name="quality"]:checked').value;
+      
+      try {
+        const res = await fetch('/split', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ filename: uploadedFilename, duration, quality })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          clipsData = data.clips;
+          outputDir = data.output_dir;
+          document.getElementById('result-summary').textContent = `تم إنشاء ${clipsData.length} مقطع فيديو`;
+          renderClips();
+          showSection('results');
+        }
+      } catch (e) {
+        alert('خطأ في المعالجة');
+      }
+    }
+    
+    function renderClips() {
+      const grid = document.getElementById('clips-grid');
+      grid.innerHTML = '';
+      clipsData.forEach(clip => {
+        const div = document.createElement('div');
+        div.className = 'clip';
+        div.innerHTML = `
+          <div style="font-size:2rem;">🎬</div>
+          <div class="clip-name">${clip.name}</div>
+          <div style="color:#666;font-size:0.9rem;">${(clip.size/1024/1024).toFixed(1)} ميجا</div>
+          <button class="clip-download" onclick="downloadClip('${clip.path}')">📥 تحميل</button>
+        `;
+        grid.appendChild(div);
+      });
+    }
+    
+    function downloadClip(path) {
+      window.location.href = `/download/${path}`;
+    }
+    
+    function downloadAllZip() {
+      window.location.href = `/download-zip/${outputDir}`;
+    }
+    
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+    
+    function resetFile() {
+      if (uploadedFilename) fetch(`/cleanup/${uploadedFilename}`);
+      location.reload();
+    }
+  </script>
+</body>
+</html>
