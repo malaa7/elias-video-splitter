@@ -7,5 +7,7 @@ __pycache__/
 *.zip
 venv/
 .vscode/
+.idea/
+.DS_Store
 fly.toml
 .fly/

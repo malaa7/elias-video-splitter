@@ -12,4 +12,13 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--timeout", "600", "--workers", "2"]
+CMD ["gunicorn", "app:app", \
+     "--bind", "0.0.0.0:8080", \
+     "--timeout", "900", \
+     "--workers", "2", \
+     "--worker-class", "sync", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--log-level", "info", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]
